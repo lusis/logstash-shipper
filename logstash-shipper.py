@@ -18,6 +18,7 @@ import errno
 import stat
 import zmq
 import socket
+import argparse
 import simplejson as json
 
 
@@ -208,17 +209,61 @@ def jsonify(line, filename):
                         '@source_path':filename})
 
 if __name__ == '__main__':
+    epilog_example="""
+    Logstash shipper provides an lightweight method for shipping local
+    log files to Logstash.
+    It does this using zeromq as the transport. This means you'll need
+    a zeromq input somewhere down the road to get the events.
+
+    Events are sent in logstash's json_event format.
+
+    Examples 1: Listening on port 5556 (all interfaces)
+        cli: logstash-shipper -a tcp://*:5556 -m bind -p /var/log/
+        logstash config:
+            input { zeromq {
+                type => 'shipper-input'
+                mode => 'client'
+                topology => 'pushpull'
+                address => 'tcp://shipperhost:5556'
+              } }
+            output { stdout { debug => true } }
+
+    Example 2: Connecting to remote port 5556 on indexer
+        cli: logstash-shipper -a tcp://indexer:5556 -m connect -p /var/log/
+        logstash config:
+            input { zeromq {
+                type => 'shipper-input'
+                mode => 'server'
+                topology => 'pushpull'
+                address => 'tcp://*:5556'
+              }}
+            output { stdout { debug => true } }
+    """
+    parser = argparse.ArgumentParser(description='Logstash logfile shipper',
+                                    epilog=epilog_example,
+                                    formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('-a', '--address', help='0mq address', required=True,
+                        dest='address')
+    parser.add_argument('-m', '--mode', help='bind or connect mode',
+                        default='bind', choices=['bind','connect'])
+    parser.add_argument('-p', '--path', help='path to log files', required=True)
+    args = parser.parse_args()
     try:
         ctx = zmq.Context()
         pub = ctx.socket(zmq.PUSH)
-        pub.connect("tcp://192.168.1.195:5556")
+
+        if args.mode == 'bind':
+            pub.bind(args.address)
+        else:
+            pub.connect(args.address)
+
         def callback(filename, lines):
             for line in lines:
                 msg = line.rstrip(os.linesep)
                 json_msg = jsonify(msg, filename)
                 pub.send(json_msg)
-
-        l = LogWatcher("./", callback)
+        path = args.path
+        l = LogWatcher(path, callback)
         l.loop()
     except KeyboardInterrupt:
         print("shutting down. please wait")

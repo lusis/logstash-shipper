@@ -1,2 +1,3 @@
 pyzmq==2.1.11
 simplejson==2.0.9
+argparse=1.2.1
