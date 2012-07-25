@@ -1,3 +1,12 @@
+# UPDATE!
+It looks like someone has taken this and made it like over 9000 times better:
+
+https://github.com/josegonzalez/beaver
+
+I'll still keep this repo around and maintain it but if you need alternate transports, take a look at Beaver.
+
+I love open source!
+
 # logstash-shipper
 Sometimes the JVM is too heavy for edge collection.
 
